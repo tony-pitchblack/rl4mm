@@ -1,4 +1,4 @@
-FROM rayproject/ray:latest-gpu AS RL4MM
+FROM rayproject/ray:latest-gpu AS rl4mm
 ARG DEBIAN_FRONTEND=noninteractive
 USER root
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A4B469963BF863CC
@@ -52,7 +52,7 @@ COPY launcher.sh launcher.sh
 RUN chmod +x launcher.sh
 ##########################################
 #For the A100 cards to work:
-FROM RL4MM AS RL4MM_A100 
+FROM rl4mm AS rl4mm_a100 
 RUN pip3 install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
 RUN python3 setup.py install
 

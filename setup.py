@@ -23,7 +23,7 @@ setup(
         "rl4mm.simulation",
         "rl4mm.simulation.tests",
     ],
-    url="https://github.com/jjjerome/RL4MM",
+    url="https://github.com/jjjerome/rl4mm",
     license="3-Clause BSD License",
     author="jjjerome",
     author_email="josephjerome94@gmail.com",
