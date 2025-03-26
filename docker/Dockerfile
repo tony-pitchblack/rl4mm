@@ -1,5 +1,6 @@
 FROM rayproject/ray:latest-gpu AS rl4mm
 ARG DEBIAN_FRONTEND=noninteractive
+FROM ubuntu:22.04
 USER root
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A4B469963BF863CC
 
