@@ -1,0 +1,1 @@
+psql -U postgres -d lob_snapshots -c "TRUNCATE TABLE book, messages;"
