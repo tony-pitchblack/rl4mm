@@ -24,6 +24,7 @@ dependencies:
   - pip:
     - ray
     - stable-baselines3
+    - shimmy>=2.0
     - gymnasium
     - sqlalchemy~=1.4.31
     - bayesian-optimization==1.2.0
