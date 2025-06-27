@@ -21,9 +21,12 @@ dependencies:
   - invoke
   - pydantic
   - python-dotenv
+  - tqdm
+  - ipywidgets>=8.1.7
+  - tensorboard>=2.19.0
   - pip:
     - ray
-    - stable-baselines3
+    - stable-baselines3[extra]
     - shimmy>=2.0
     - gymnasium
     - sqlalchemy~=1.4.31
