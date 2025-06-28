@@ -15,6 +15,7 @@ This directory contains scripts to set up and populate the PostgreSQL database w
 
 - **`setup_and_populate_db.sh`**: Complete setup - runs all steps in order
 - **`populate_db.sh`**: Populate database with LOBSTER data (auto-infers dates and levels)
+- **`convert_lob_levels.py`**: Convert Hugging Face LOB level parquet files into LOBSTER style CSVs
 - **`clear_db.sh`**: Clear all data from the database
 - **`test_db.sh`**: Test database connection and view sample data
 
