@@ -1,5 +1,8 @@
 from datetime import datetime
 from typing import Tuple, Optional
+import glob
+import os
+import re
 
 import argparse
 import logging
@@ -145,9 +148,47 @@ parser.add_argument(
     default=1000000,
     help="the batch size used to populate the db (for reducing memory requirements)",
 )
+parser.add_argument(
+    "--infer_dates_from_files",
+    action="store_true",
+    help="infer trading dates from LOBSTER filenames",
+)
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    
+    if args.infer_dates_from_files:
+        # Find all LOBSTER files for the given ticker
+        pattern = os.path.join(args.path_to_lobster_data, f"{args.ticker}_*_orderbook_*.csv")
+        files = glob.glob(pattern)
+        if not files:
+            raise ValueError(f"No LOBSTER files found matching pattern {pattern}")
+            
+        # Extract dates and n_levels from filenames
+        dates = []
+        n_levels_set = set()
+        for f in files:
+            match = re.search(rf"{args.ticker}_(\d{{4}}-\d{{2}}-\d{{2}})_.*_orderbook_(\d+)\.csv", f)
+            if match:
+                dates.append(match.group(1))
+                n_levels_set.add(int(match.group(2)))
+        
+        if not dates:
+            raise ValueError("Could not extract dates from filenames")
+            
+        # Use min/max dates found in files
+        args.min_trading_date = min(dates)
+        args.max_trading_date = max(dates)
+        
+        # Use the n_levels from files (should be consistent)
+        if len(n_levels_set) == 1:
+            args.n_levels = n_levels_set.pop()
+            logging.info(f"Inferred n_levels: {args.n_levels}")
+        elif len(n_levels_set) > 1:
+            logging.warning(f"Multiple n_levels found in files: {n_levels_set}, using command line value: {args.n_levels}")
+            
+        logging.info(f"Inferred date range: {args.min_trading_date} to {args.max_trading_date}")
+
     populate_database(
         tickers=(args.ticker,),
         trading_datetimes=pd.bdate_range(get_date_time(args.min_trading_date), get_date_time(args.max_trading_date)),
