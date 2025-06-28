@@ -21,6 +21,9 @@ import pandas as pd
 
 from gym.spaces import Box
 from gym.utils import seeding
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 from rl4mm.features.Features import (
     Feature,
@@ -58,6 +61,7 @@ class HistoricalOrderbookEnvironment(gym.Env):
         ticker: str = "MSFT",
         step_size: timedelta = timedelta(seconds=0.1),
         episode_length: timedelta = timedelta(minutes=30),
+        warm_up: Optional[timedelta] = None,
         initial_portfolio: Portfolio = None,
         min_quote_level: int = 0,
         max_quote_level: int = 10,
@@ -133,26 +137,37 @@ class HistoricalOrderbookEnvironment(gym.Env):
             high=high_obs,
             dtype=np.float32,
         )
+        # Warm-up handling
         self.max_feature_window_size = max([feature.window_size for feature in self.features])
+        if warm_up is not None:
+            assert warm_up >= self.max_feature_window_size, (
+                "warm_up must be at least as large as the largest feature window "
+                f"({self.max_feature_window_size})."
+            )
+            self.warm_up = warm_up
+        else:
+            # preserve original behaviour
+            self.warm_up = self.max_feature_window_size
+        
         self.simulator = simulator or OrderbookSimulator(
             ticker=ticker,
             order_generators=[HistoricalOrderGenerator(ticker, HistoricalDatabase(), preload_orders)],
             n_levels=self.n_levels,
             preload_orders=preload_orders,
             episode_length=episode_length,
-            warm_up=self.max_feature_window_size,
+            warm_up=self.warm_up,
         )
         self.state: State = self._get_default_state()
 
     def reset(self):
         episode_start = self._get_random_start_time()
         self.terminal_time = episode_start + self.episode_length
-        now_is = episode_start - self.max_feature_window_size
+        now_is = episode_start - self.warm_up
         self.simulator.reset_episode(start_date=now_is)
         price = self.pricer(self.central_orderbook)
         self.state = State(FilledOrders(), self.central_orderbook, price, self.initial_portfolio, now_is)
         self._reset_features(episode_start)
-        for step in range(int(self.max_feature_window_size / self.step_size)):
+        for step in range(int(self.warm_up / self.step_size)):
             self._forward(list())
             self._update_features()
         if self.inc_prev_action_in_obs:
@@ -258,10 +273,14 @@ class HistoricalOrderbookEnvironment(gym.Env):
         return orders
 
     def _get_inventory_clearing_market_order(self) -> List[MarketOrder]:
+        # logging.info(f"Clearing inventory: {self.state.portfolio.inventory}")
         inventory = self.state.portfolio.inventory
         order_direction = "buy" if inventory < 0 else "sell"
         order_dict = self._get_default_order_dict(order_direction)  # type:ignore
-        order_dict["volume"] = np.round(np.abs(inventory) * self.market_order_fraction_of_inventory)
+        volume = int(np.ceil(np.abs(inventory) * self.market_order_fraction_of_inventory))
+        if volume == 0:
+            return []           # nothing to clear
+        order_dict["volume"] = volume
         market_order = create_order("market", order_dict)
         return [market_order]
 
@@ -335,7 +354,8 @@ class HistoricalOrderbookEnvironment(gym.Env):
             (self.max_end_timedelta - self.episode_length - self.min_start_timedelta) / self.step_size
         )
         try:
-            random_offset_steps = np.random.randint(low=0, high=max_offset_steps)
+            # use the environment-local RNG for reproducibility
+            random_offset_steps = self.np_random.randint(low=0, high=max_offset_steps)
         except ValueError:
             random_offset_steps = 0
         random_offset_timestamp = self.min_start_timedelta + random_offset_steps * self.step_size
@@ -343,11 +363,11 @@ class HistoricalOrderbookEnvironment(gym.Env):
         return random_offset_timestamp
 
     def _random_offset_days(self):
-        return np.random.randint(int((self.max_date.date() - self.min_date.date()) / timedelta(days=1)) + 1)
+        return self.np_random.randint(int((self.max_date.date() - self.min_date.date()) / timedelta(days=1)) + 1)
 
     def _get_random_trading_day(self):
         trading_dates = pd.bdate_range(self.min_date, self.max_date)
-        trading_date = get_next_trading_dt(pd.to_datetime(np.random.choice(trading_dates)))
+        trading_date = get_next_trading_dt(pd.to_datetime(self.np_random.choice(trading_dates)))
         return datetime.combine(trading_date.date(), datetime.min.time())
 
     def render(self, mode="human"):
