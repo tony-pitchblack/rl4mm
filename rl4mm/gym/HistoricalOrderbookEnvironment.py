@@ -83,7 +83,7 @@ class HistoricalOrderbookEnvironment(gym.Env):
         n_levels: int = 50,
         preload_orders: bool = True,
     ):
-        super(HistoricalOrderbookEnvironment, self).__init__()
+        super().__init__()
 
         # Actions are the parameters governing the distribution over levels in the orderbook
         if concentration is not None:
@@ -355,7 +355,7 @@ class HistoricalOrderbookEnvironment(gym.Env):
         )
         try:
             # use the environment-local RNG for reproducibility
-            random_offset_steps = self.np_random.randint(low=0, high=max_offset_steps)
+            random_offset_steps = self.np_random.integers(low=0, high=max_offset_steps)
         except ValueError:
             random_offset_steps = 0
         random_offset_timestamp = self.min_start_timedelta + random_offset_steps * self.step_size
@@ -363,7 +363,7 @@ class HistoricalOrderbookEnvironment(gym.Env):
         return random_offset_timestamp
 
     def _random_offset_days(self):
-        return self.np_random.randint(int((self.max_date.date() - self.min_date.date()) / timedelta(days=1)) + 1)
+        return self.np_random.integers(int((self.max_date.date() - self.min_date.date()) / timedelta(days=1)) + 1)
 
     def _get_random_trading_day(self):
         trading_dates = pd.bdate_range(self.min_date, self.max_date)

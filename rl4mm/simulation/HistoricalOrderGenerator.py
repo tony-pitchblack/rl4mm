@@ -34,6 +34,17 @@ class HistoricalOrderGenerator(OrderGenerator):
             assert (self.start_of_episode < self._get_mid_datetime(start_date, end_date)) and (
                 self._get_mid_datetime(start_date, end_date) < self.end_of_episode
             ), f"Cannot generate orders between {start_date} and {end_date} as they have not been stored locally yet."
+            
+            # Debug: Check if episode_messages has timestamp column
+            if self.episode_messages.empty:
+                print(f"DEBUG: episode_messages is empty, returning empty deque")
+                return deque()
+            
+            if 'timestamp' not in self.episode_messages.columns:
+                print(f"DEBUG: episode_messages columns: {list(self.episode_messages.columns)}")
+                print(f"DEBUG: episode_messages shape: {self.episode_messages.shape}")
+                return deque()
+            
             messages = self.episode_messages[
                 (self.episode_messages.timestamp > start_date) & (self.episode_messages.timestamp <= end_date)
             ]

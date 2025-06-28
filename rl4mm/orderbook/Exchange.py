@@ -56,17 +56,28 @@ class Exchange:
         self.internal_orderbook = self.get_empty_orderbook()
 
     def process_order(self, order: Order) -> Optional[FilledOrders]:
-        if hasattr(order, "volume") and order.volume is not None:
-            assert order.volume > 0, f"Order volume must be positive. Instead, order.volume = {order.volume}."
+        # 1. Enforce strictly-positive volume only for executable orders
+        #    (Market & Limit).  For Cancellation / Deletion a volume of
+        #    0 means "cancel the whole order" and is legal.
+        if isinstance(order, (LimitOrder, MarketOrder)):
+            assert order.volume is not None and order.volume > 0, (
+                f"Order volume must be positive. Instead, order.volume = {order.volume}."
+            )
+
+        # 2. Convert an explicit '0' on cancellation / deletion to the
+        #    "remove whole order" sentinel (None).
+        if isinstance(order, (Cancellation, Deletion)) and order.volume == 0:
+            order.volume = None
+
+        # 3. Dispatch
         if isinstance(order, LimitOrder):
             return self.submit_order(order)
-        elif isinstance(order, MarketOrder):
+        if isinstance(order, MarketOrder):
             return self.execute_order(order)
-        elif isinstance(order, (Cancellation, Deletion)):
+        if isinstance(order, (Cancellation, Deletion)):
             self.remove_order(order)
             return None
-        else:
-            raise NotImplementedError(f"Cannot process order of type {type(order)}.")
+        raise NotImplementedError(f"Cannot process order of type {type(order)}.")
 
     def submit_order(self, order: LimitOrder) -> Optional[FilledOrders]:
         if self._does_order_cross_spread(order):
