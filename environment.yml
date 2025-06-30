@@ -24,6 +24,7 @@ dependencies:
   - tqdm
   - ipywidgets>=8.1.7
   - tensorboard>=2.19.0
+  - huggingface-hub
   - pip:
     - ray
     - stable-baselines3[extra]
